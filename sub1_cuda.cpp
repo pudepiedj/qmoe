@@ -57,3 +57,33 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("sub1matvec", &sub1matvec, "Sub1 bit compressed matvec (CUDA)");
   m.def("sub1pack", &sub1pack, "Sub1 bit compressed packing (CUDA)");
 }
+
+// Code that is intended to replace the above
+
+void sub1matvec(
+    torch::Tensor dec,
+    torch::Tensor w_comp,
+    torch::Tensor row_off,
+    torch::Tensor ter_minmax,
+    torch::Tensor x,
+    torch::Tensor y
+) {
+    // Convert Torch Tensors to Metal Buffer Objects
+    const at::cuda::OptionalCUDAGuard device_guard(device_of(dec));
+    
+    // Get the device
+    const auto device = dec.device();
+    
+    // Create Metal device and context
+    id<MTLDevice> mtlDevice = MTLCreateSystemDefaultDevice();
+    id<MTLCommandQueue> commandQueue = [mtlDevice newCommandQueue];
+    
+    // Create Metal buffer objects for input tensors
+    id<MTLBuffer> decBuffer = device_guard.copyToMetalBuffer(dec);
+    id<MTLBuffer> w_compBuffer = device_guard.copyToMetalBuffer(w_comp);
+    id<MTLBuffer> row_offBuffer = device_guard.copyToMetalBuffer(row_off);
+    id<MTLBuffer> ter_minmaxBuffer = device_guard.copyToMetalBuffer(ter_minmax);
+    
+    // Create Metal buffer object for output tensor
+    id<MTLBuffer> yBuffer = device_guard.newBuffer(y.numel() * sizeof(float), MTLResourceStorageModeShared);
+}
